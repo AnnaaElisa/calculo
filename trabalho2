@@ -1,0 +1,209 @@
+import re
+import math
+
+# Classe para representar um termo de um polinômio
+class Termo:
+    def __init__(self, coeficiente, expoente):
+        self.coeficiente = coeficiente
+        self.expoente = expoente
+
+    def __repr__(self):
+        return f"{self.coeficiente}x^{self.expoente}"
+
+# Função para imprimir um polinômio
+def imprimir_polinomio(termos):
+    if not termos:
+        print("0")
+        return
+    resultado = ""
+    for i, termo in enumerate(termos):
+        if termo.coeficiente == 0:
+            continue
+        if resultado:
+            if termo.coeficiente > 0:
+                resultado += " + "
+            else:
+                resultado += " - "
+        else:
+            if termo.coeficiente < 0:
+                resultado += "-"
+
+        coef_abs = abs(termo.coeficiente)
+        if coef_abs != 1 or termo.expoente == 0:
+            resultado += f"{coef_abs}"
+        if termo.expoente > 0:
+            resultado += "x"
+        if termo.expoente > 1:
+            resultado += f"^{termo.expoente}"
+
+    print(resultado)
+
+# Função para derivar um polinômio
+def derivar_polinomio(termos):
+    derivada = []
+    for termo in termos:
+        if termo.expoente != 0:
+            derivada.append(Termo(termo.coeficiente * termo.expoente, termo.expoente - 1))
+    return derivada
+
+# Função para avaliar um polinômio em um ponto x
+def avaliar_polinomio(termos, x):
+    resultado = 0.0
+    for termo in termos:
+        resultado += termo.coeficiente * math.pow(x, termo.expoente)
+    return resultado
+
+# Função para combinar termos com o mesmo expoente
+def combinar_termos(polinomio):
+    termos_combinados = {}
+    for termo in polinomio:
+        if termo.expoente in termos_combinados:
+            termos_combinados[termo.expoente] += termo.coeficiente
+        else:
+            termos_combinados[termo.expoente] = termo.coeficiente
+    return [Termo(coef, exp) for exp, coef in sorted(termos_combinados.items(), reverse=True) if coef != 0]
+
+# Função para derivar o produto de dois polinômios
+def derivar_produto(f, g):
+    f_derivada = derivar_polinomio(f)
+    g_derivada = derivar_polinomio(g)
+    
+    produto_derivada = []
+
+    # f' * g
+    for termo_f in f_derivada:
+        for termo_g in g:
+            coeficiente = termo_f.coeficiente * termo_g.coeficiente
+            expoente = termo_f.expoente + termo_g.expoente
+            produto_derivada.append(Termo(coeficiente, expoente))
+
+    # f * g'
+    for termo_f in f:
+        for termo_g in g_derivada:
+            coeficiente = termo_f.coeficiente * termo_g.coeficiente
+            expoente = termo_f.expoente + termo_g.expoente
+            produto_derivada.append(Termo(coeficiente, expoente))
+
+    produto_derivada = combinar_termos(produto_derivada)
+    return produto_derivada
+
+# Função para derivar o quociente de dois polinômios
+def derivar_quociente(f, g):
+    f_derivada = derivar_polinomio(f)
+    g_derivada = derivar_polinomio(g)
+    
+    numerador = []
+
+    # f' * g
+    for termo_f in f_derivada:
+        for termo_g in g:
+            coeficiente = termo_f.coeficiente * termo_g.coeficiente
+            expoente = termo_f.expoente + termo_g.expoente
+            numerador.append(Termo(coeficiente, expoente))
+    
+    # f * g'
+    for termo_f in f:
+        for termo_g in g_derivada:
+            coeficiente = -termo_f.coeficiente * termo_g.coeficiente
+            expoente = termo_f.expoente + termo_g.expoente
+            numerador.append(Termo(coeficiente, expoente))
+
+    numerador = combinar_termos(numerador)
+    g_squared = [Termo(g_term.coeficiente ** 2, g_term.expoente * 2) for g_term in g]
+    
+    return numerador, g_squared
+
+# Função para parsear a entrada do usuário
+def parse_entrada(entrada):
+    tokens = re.findall(r'[\+\-]?\d*x\^?\d*', entrada.replace(' ', ''))
+    termos = []
+    for token in tokens:
+        if 'x' in token:
+            parts = token.split('x')
+            coef_str = parts[0]
+            exp_str = parts[1][1:] if '^' in parts[1] else '1'
+            coeficiente = int(coef_str) if coef_str not in ('', '+', '-') else int(coef_str + '1')
+            expoente = int(exp_str) if exp_str else 1
+        else:
+            coeficiente = int(token)
+            expoente = 0
+        termos.append(Termo(coeficiente, expoente))
+    return termos
+
+# Função para calcular a equação da reta tangente
+def equacao_reta_tangente(termos, a):
+    f_a = avaliar_polinomio(termos, a)
+    derivada = derivar_polinomio(termos)
+    f_prime_a = avaliar_polinomio(derivada, a)
+    b = f_a - f_prime_a * a
+    return f_prime_a, b
+
+# Função principal
+def main():
+    while True:
+        entrada = input("Digite a função polinomial em termos de x (ex: x^3 * 2x^2 ou x^3 + 2x^2 ou x^3 / 2x^2):\n")
+        
+        if '*' in entrada:
+            f_str, g_str = entrada.split('*')
+            f = parse_entrada(f_str)
+            g = parse_entrada(g_str)
+
+            print("Polinômio f(x):")
+            imprimir_polinomio(f)
+            print("Polinômio g(x):")
+            imprimir_polinomio(g)
+
+            derivada = derivar_produto(f, g)
+
+            print("Derivada do produto f(x) * g(x):")
+            imprimir_polinomio(derivada)
+        
+        elif '/' in entrada:
+            f_str, g_str = entrada.split('/')
+            f = parse_entrada(f_str)
+            g = parse_entrada(g_str)
+
+            print("Polinômio f(x):")
+            imprimir_polinomio(f)
+            print("Polinômio g(x):")
+            imprimir_polinomio(g)
+
+            numerador, denominador = derivar_quociente(f, g)
+
+            print("Derivada do quociente f(x) / g(x):")
+            imprimir_polinomio(numerador)
+            print("Dividido por:")
+            imprimir_polinomio(denominador)
+        
+        else:
+            termos = parse_entrada(entrada)
+            print("Polinômio f(x):")
+            imprimir_polinomio(termos)
+
+            derivada = derivar_polinomio(termos)
+
+            print("Derivada f'(x):")
+            imprimir_polinomio(derivada)
+
+        calcular_valor = input("Deseja calcular valor funcional? (s/n)\n").strip().lower()
+        if calcular_valor == 's':
+            a = float(input("Qual o valor de a?\n"))
+            f_a = avaliar_polinomio(termos, a)
+            f_prime_a = avaliar_polinomio(derivar_polinomio(termos), a)
+            print(f"f({a}) = {f_a}")
+            print(f"f'({a}) = {f_prime_a}")
+            print(f"O ponto P({a}, {f_a})")
+        
+        calcular_tangente = input("Deseja calcular equação da reta tangente ao gráfico de f no ponto P(a, f(a))? (s/n)\n").strip().lower()
+        if calcular_tangente == 's':
+            a = float(input("Qual o valor de a?\n"))
+            f_prime_a, b = equacao_reta_tangente(termos, a)
+            print(f"A equação da reta tangente ao gráfico de f no ponto P({a}, {avaliar_polinomio(termos, a)}) é y = {f_prime_a}x + {b}")
+
+        repete = input("Deseja inserir uma nova função polinomial? (s/n)\n").strip().lower()
+        if repete != 's':
+            break
+
+if __name__ == "__main__":
+    main()
+
